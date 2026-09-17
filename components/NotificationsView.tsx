@@ -52,7 +52,6 @@ export default function NotificationsView() {
           <Bell className="w-8 h-8 mx-auto text-zinc-400" />
           <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Nothing new yet</p>
           <p className="text-xs text-zinc-500">When someone you follow reviews or watches a title, it will appear here.</p>
-          <Link href="/people" className="inline-block mt-2 px-4 py-2 text-xs font-semibold rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900">Find people</Link>
         </div>
       ) : (
         <div className="space-y-3">

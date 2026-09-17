@@ -260,17 +260,21 @@ BEGIN
     COALESCE(
       NEW.raw_user_meta_data->>'preferred_username',
       NEW.raw_user_meta_data->>'user_name',
+      NEW.raw_user_meta_data->>'username',
       LOWER(REGEXP_REPLACE(COALESCE(NEW.raw_user_meta_data->>'full_name', ''), '\s+', '_', 'g')),
       SPLIT_PART(COALESCE(NEW.email, 'watcher'), '@', 1)
     ),
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'Watcher'),
+    COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'Watcher'),
     COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', ''),
     'Cinema explorer on Weflixd.',
     COALESCE(NEW.raw_app_meta_data->>'provider', 'google')
   )
   ON CONFLICT (id) DO UPDATE SET
+    username = COALESCE(EXCLUDED.username, public.profiles.username),
     avatar_url = EXCLUDED.avatar_url,
     display_name = EXCLUDED.display_name,
+    bio = COALESCE(NULLIF(EXCLUDED.bio, ''), public.profiles.bio),
+    provider = COALESCE(EXCLUDED.provider, public.profiles.provider),
     updated_at = NOW();
   RETURN NEW;
 END;

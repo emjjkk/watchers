@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { supabase, UserProfile, fetchUserProfileDB, upsertUserProfileDB } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -18,6 +19,91 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const profileRequestRef = useRef(0);
+
+  const getFallbackProfile = (authUser: User): UserProfile => {
+    const metadata = authUser.user_metadata || {};
+    return {
+      id: authUser.id,
+      username:
+        metadata.preferred_username ||
+        metadata.user_name ||
+        metadata.username ||
+        metadata.full_name?.toLowerCase().replace(/\s+/g, '_') ||
+        authUser.email?.split('@')[0] ||
+        'watcher',
+      display_name:
+        metadata.display_name ||
+        metadata.full_name ||
+        metadata.name ||
+        metadata.custom_claims?.global_name ||
+        'Watcher',
+      avatar_url: metadata.avatar_url || metadata.picture || '',
+      bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
+      provider:
+        authUser.app_metadata?.provider === 'discord'
+          ? 'discord'
+          : authUser.app_metadata?.provider || 'email',
+      created_at: authUser.created_at,
+    };
+  };
+
+  const syncProfile = useCallback(async (authUser: User) => {
+    const client = supabase;
+    if (!client) return;
+
+    const requestId = ++profileRequestRef.current;
+    const dbProfile = await fetchUserProfileDB(authUser.id);
+
+    if (requestId !== profileRequestRef.current) return;
+
+    const fallbackProfile = getFallbackProfile(authUser);
+    const profile = dbProfile || fallbackProfile;
+
+    if (!dbProfile) {
+      await upsertUserProfileDB(profile);
+    }
+
+    if (requestId === profileRequestRef.current) {
+      if (dbProfile) {
+        const metadataProfile = {
+          ...dbProfile,
+          username: dbProfile.username || fallbackProfile.username,
+          display_name: dbProfile.display_name || fallbackProfile.display_name,
+          avatar_url: dbProfile.avatar_url || fallbackProfile.avatar_url,
+          bio: dbProfile.bio || fallbackProfile.bio,
+          provider: dbProfile.provider || fallbackProfile.provider,
+        };
+
+        setUser(metadataProfile);
+
+        const authMeta = authUser.user_metadata || {};
+        const needsMetadataSync =
+          (authMeta.username ?? '') !== metadataProfile.username ||
+          (authMeta.display_name ?? '') !== metadataProfile.display_name ||
+          (authMeta.avatar_url ?? '') !== metadataProfile.avatar_url ||
+          (authMeta.bio ?? '') !== metadataProfile.bio;
+
+        if (needsMetadataSync) {
+          try {
+            await client.auth.updateUser({
+              data: {
+                username: metadataProfile.username,
+                display_name: metadataProfile.display_name,
+                avatar_url: metadataProfile.avatar_url,
+                bio: metadataProfile.bio,
+              },
+            });
+          } catch {
+            // ignore metadata sync failures; DB is the source of truth.
+          }
+        }
+        return;
+      }
+
+      setUser(profile);
+    }
+  }, []);
 
   useEffect(() => {
     // Clean up any legacy manual localStorage user session keys
@@ -36,39 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       try {
         if (session?.user) {
-          const u = session.user;
-          const metadata = u.user_metadata || {};
-
-          const dbProfile = await fetchUserProfileDB(u.id);
-          const profile: UserProfile = dbProfile || {
-            id: u.id,
-            username:
-              metadata.preferred_username ||
-              metadata.user_name ||
-              metadata.username ||
-              metadata.full_name?.toLowerCase().replace(/\s+/g, '_') ||
-              u.email?.split('@')[0] ||
-              'watcher',
-            display_name:
-              metadata.display_name ||
-              metadata.full_name ||
-              metadata.name ||
-              metadata.custom_claims?.global_name ||
-              'Watcher',
-            avatar_url: metadata.avatar_url || metadata.picture || '',
-            bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
-            provider:
-              u.app_metadata?.provider === 'discord'
-                ? 'discord'
-                : u.app_metadata?.provider || 'email',
-            created_at: u.created_at,
-          };
-
-          if (!dbProfile) {
-            await upsertUserProfileDB(profile);
-          }
-
-          setUser(profile);
+          await syncProfile(session.user);
         } else {
           setUser(null);
         }
@@ -79,50 +133,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          const u = session.user;
-          const metadata = u.user_metadata || {};
-          const dbProfile = await fetchUserProfileDB(u.id);
-          const profile: UserProfile = dbProfile || {
-            id: u.id,
-            username:
-              metadata.preferred_username ||
-              metadata.user_name ||
-              metadata.username ||
-              metadata.full_name?.toLowerCase().replace(/\s+/g, '_') ||
-              u.email?.split('@')[0] ||
-              'watcher',
-            display_name:
-              metadata.display_name ||
-              metadata.full_name ||
-              metadata.name ||
-              'Watcher',
-            avatar_url: metadata.avatar_url || metadata.picture || '',
-            bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
-            provider:
-              u.app_metadata?.provider === 'discord'
-                ? 'discord'
-                : u.app_metadata?.provider || 'email',
-            created_at: u.created_at,
-          };
-
-          if (!dbProfile) {
-            await upsertUserProfileDB(profile);
-          }
-
-          setUser(profile);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'].includes(event)) {
+        void syncProfile(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        profileRequestRef.current += 1;
+        setUser(null);
       }
-    );
+    });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [syncProfile]);
 
   const loginWithEmail = async (email: string, password: string) => {
     setIsLoading(true);
@@ -142,33 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data?.user) {
-        const u = data.user;
-        const metadata = u.user_metadata || {};
-        const dbProfile = await fetchUserProfileDB(u.id);
-        const profile: UserProfile = dbProfile || {
-          id: u.id,
-          username:
-            metadata.preferred_username ||
-            metadata.user_name ||
-            metadata.username ||
-            u.email?.split('@')[0] ||
-            'watcher',
-          display_name:
-            metadata.display_name ||
-            metadata.full_name ||
-            metadata.name ||
-            'Watcher',
-          avatar_url: metadata.avatar_url || metadata.picture || '',
-          bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
-          provider: 'email',
-          created_at: u.created_at,
-        };
-
-        if (!dbProfile) {
-          await upsertUserProfileDB(profile);
-        }
-
-        setUser(profile);
+        await syncProfile(data.user);
       }
     } catch (err) {
       setIsLoading(false);
@@ -241,8 +238,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           created_at: sessionUser.created_at || new Date().toISOString(),
         };
 
-        await upsertUserProfileDB(profile);
-        setUser(profile);
+        const savedProfile = await upsertUserProfileDB(profile);
+        if (!savedProfile) {
+          throw new Error('Your account was created, but your profile could not be saved.');
+        }
+
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              username: savedProfile.username,
+              display_name: savedProfile.display_name,
+              avatar_url: savedProfile.avatar_url,
+              bio: savedProfile.bio,
+            },
+          });
+        } catch {
+          // Keep the database profile as the canonical source of truth.
+        }
+
+        profileRequestRef.current += 1;
+        setUser(savedProfile);
       }
     } catch (err) {
       setIsLoading(false);
@@ -290,11 +305,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (updates: Partial<UserProfile>): Promise<boolean> => {
     if (!user) return false;
     const updated = { ...user, ...updates };
-    setUser(updated);
 
     if (supabase && user.id) {
       try {
-        await upsertUserProfileDB({
+        const savedProfile = await upsertUserProfileDB({
           id: user.id,
           username: updated.username,
           display_name: updated.display_name,
@@ -303,15 +317,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           bio: updated.bio,
           provider: updated.provider,
         });
+        if (!savedProfile) return false;
 
-        // Also update auth user metadata
+        profileRequestRef.current += 1;
+        setUser(savedProfile);
+
+        // Keep auth metadata aligned with the persisted profile so session hydration
+        // does not fall back to stale default values after a refresh or page hop.
         await supabase.auth.updateUser({
           data: {
-            username: updated.username,
-            display_name: updated.display_name,
-            avatar_url: updated.avatar_url,
-            banner_image: updated.banner_image,
-            bio: updated.bio,
+            username: savedProfile.username,
+            display_name: savedProfile.display_name,
+            avatar_url: savedProfile.avatar_url,
+            banner_image: savedProfile.banner_image || '',
+            bio: savedProfile.bio,
           },
         }).catch(() => {});
 
