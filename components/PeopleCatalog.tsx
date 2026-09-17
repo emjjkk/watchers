@@ -1,18 +1,60 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, User, X } from 'lucide-react';
 import { PersonItem } from '@/lib/types';
 
 interface PeopleCatalogProps {
   initialPeople: PersonItem[];
+  totalPages?: number;
 }
 
-export default function PeopleCatalog({ initialPeople }: PeopleCatalogProps) {
+export default function PeopleCatalog({ initialPeople, totalPages = 1 }: PeopleCatalogProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get('page') || '1');
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState(initialPeople);
+  const [pageCount, setPageCount] = useState(totalPages);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (currentPage === 1) {
+      setPeople(initialPeople);
+      setPageCount(totalPages);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoading(true);
+    fetch(`/api/tmdb/people?page=${currentPage}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!isMounted) return;
+        setPeople(Array.isArray(data.results) ? data.results : []);
+        setPageCount(data.total_pages || 1);
+      })
+      .catch(() => {
+        if (isMounted) setPeople([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentPage, initialPeople, totalPages]);
+
+  const updatePage = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (page <= 1) params.delete('page');
+    else params.set('page', String(page));
+    router.push(`/people${params.toString() ? `?${params.toString()}` : ''}`);
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -69,8 +111,13 @@ export default function PeopleCatalog({ initialPeople }: PeopleCatalogProps) {
       </div>
 
       {/* People Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
-        {people.map(person => (
+      {isLoading ? (
+        <div className="py-20 flex justify-center">
+          <div className="w-8 h-8 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent animate-spin rounded-full" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+          {people.map(person => (
           <Link
             key={person.id}
             href={`/people/${person.id}`}
@@ -103,8 +150,29 @@ export default function PeopleCatalog({ initialPeople }: PeopleCatalogProps) {
                 </p>
               )}
             </div>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-center gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+        <button
+          type="button"
+          disabled={currentPage <= 1 || isLoading}
+          onClick={() => updatePage(currentPage - 1)}
+          className="px-3 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-800 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          Previous
+        </button>
+        <span className="text-xs text-zinc-500">Page {currentPage} of {pageCount}</span>
+        <button
+          type="button"
+          disabled={currentPage >= pageCount || isLoading}
+          onClick={() => updatePage(currentPage + 1)}
+          className="px-3 py-1.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-800 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

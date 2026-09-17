@@ -55,10 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               metadata.name ||
               metadata.custom_claims?.global_name ||
               'Watcher',
-            avatar_url:
-              metadata.avatar_url ||
-              metadata.picture ||
-              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+            avatar_url: metadata.avatar_url || metadata.picture || '',
             bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
             provider:
               u.app_metadata?.provider === 'discord'
@@ -102,10 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               metadata.full_name ||
               metadata.name ||
               'Watcher',
-            avatar_url:
-              metadata.avatar_url ||
-              metadata.picture ||
-              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+            avatar_url: metadata.avatar_url || metadata.picture || '',
             bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
             provider:
               u.app_metadata?.provider === 'discord'
@@ -164,10 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             metadata.full_name ||
             metadata.name ||
             'Watcher',
-          avatar_url:
-            metadata.avatar_url ||
-            metadata.picture ||
-            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+          avatar_url: metadata.avatar_url || metadata.picture || '',
           bio: metadata.bio || 'Movie & TV show enthusiast on Weflixd.',
           provider: 'email',
           created_at: u.created_at,
@@ -244,8 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: sessionUser.id,
           username: cleanUsername || 'watcher',
           display_name: cleanDisplayName || 'Watcher',
-          avatar_url:
-            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+          avatar_url: '',
           bio: 'Movie & TV show enthusiast on Weflixd.',
           provider: 'email',
           created_at: sessionUser.created_at || new Date().toISOString(),

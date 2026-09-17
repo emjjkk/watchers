@@ -28,6 +28,7 @@ interface ModalContextType {
   authPromptMessage: string | null;
   openAuthPrompt: (message?: string) => void;
   closeAuthPrompt: () => void;
+  showToast: (message: string) => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -40,6 +41,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isAuthPromptOpen, setIsAuthPromptOpen] = useState<boolean>(false);
   const [authPromptMessage, setAuthPromptMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const openQuickView = (media: MediaItem) => setQuickViewItem(media);
   const closeQuickView = () => setQuickViewItem(null);
@@ -65,6 +67,11 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
     setAuthPromptMessage(null);
   };
 
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 3000);
+  };
+
   return (
     <ModalContext.Provider
       value={{
@@ -87,9 +94,16 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
         authPromptMessage,
         openAuthPrompt,
         closeAuthPrompt,
+        showToast,
       }}
     >
       {children}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-[100] flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 py-3 text-sm font-medium text-zinc-800 shadow-xl dark:border-emerald-900 dark:bg-zinc-900 dark:text-zinc-100">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white">✓</span>
+          {toast}
+        </div>
+      )}
     </ModalContext.Provider>
   );
 }

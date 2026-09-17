@@ -4,17 +4,16 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Film, Mail, Lock, User, AtSign, Eye, EyeOff, AlertCircle, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 
 export default function SignUpPage() {
   const { signUpWithEmail, loginWithDiscord, user } = useAuth();
   const router = useRouter();
 
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,15 +23,6 @@ export default function SignUpPage() {
     e.preventDefault();
     setErrorMsg(null);
 
-    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    if (!cleanUsername) {
-      setErrorMsg('Please choose a valid username (letters, numbers, and underscores).');
-      return;
-    }
-    if (cleanUsername.length < 3) {
-      setErrorMsg('Username must be at least 3 characters.');
-      return;
-    }
     if (!email.trim()) {
       setErrorMsg('Please enter a valid email address.');
       return;
@@ -41,10 +31,14 @@ export default function SignUpPage() {
       setErrorMsg('Password must be at least 6 characters.');
       return;
     }
+    if (password !== passwordConfirmation) {
+      setErrorMsg('Passwords do not match.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await signUpWithEmail(email, password, cleanUsername, displayName.trim() || cleanUsername);
+      await signUpWithEmail(email, password);
       router.push('/');
     } catch (err: any) {
       const message = err?.message || 'Failed to create account. Please try again.';
@@ -109,51 +103,6 @@ export default function SignUpPage() {
 
         {/* Email & Password Sign Up Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username */}
-          <div className="space-y-1.5">
-            <label
-              htmlFor="signup-username"
-              className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400"
-            >
-              Username
-            </label>
-            <div className="relative">
-              <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                id="signup-username"
-                type="text"
-                autoComplete="username"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="cinemafan"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:bg-white dark:focus:bg-zinc-900 transition-all"
-              />
-            </div>
-            <p className="text-[11px] text-zinc-400">This will be your profile URL: /profile/{username || 'username'}</p>
-          </div>
-
-          {/* Display Name */}
-          <div className="space-y-1.5">
-            <label
-              htmlFor="signup-displayname"
-              className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400"
-            >
-              Display Name <span className="font-normal text-zinc-400 normal-case">(optional)</span>
-            </label>
-            <div className="relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                id="signup-displayname"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Alex Cinematic"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:bg-white dark:focus:bg-zinc-900 transition-all"
-              />
-            </div>
-          </div>
-
           {/* Email */}
           <div className="space-y-1.5">
             <label
@@ -172,6 +121,30 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Password Confirmation */}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="signup-password-confirmation"
+              className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400"
+            >
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                id="signup-password-confirmation"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                minLength={6}
+                value={passwordConfirmation}
+                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                placeholder="Re-enter your password"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:bg-white dark:focus:bg-zinc-900 transition-all"
               />
             </div>

@@ -268,19 +268,40 @@ export async function getMediaDetails(id: number | string, type: 'movie' | 'tv')
   return null;
 }
 
+export async function getMediaRecommendations(id: number | string, type: 'movie' | 'tv'): Promise<MediaItem[]> {
+  const data = await fetchFromTMDB<{ results: any[] }>(`/${type}/${id}/recommendations`, { language: 'en-US', page: 1 });
+  return data?.results?.map(item => formatTMDBItem(item, type)) || [];
+}
+
 export async function getTrendingPeople(): Promise<PersonItem[]> {
   const data = await fetchFromTMDB<{ results: any[] }>(`/trending/person/week`);
   if (data?.results?.length) {
-    return data.results.map(p => ({
-      id: p.id,
-      name: p.name,
-      profile_path: p.profile_path ? getTMDBImageUrl(p.profile_path, 'w500') : null,
-      known_for_department: p.known_for_department || 'Acting',
-      popularity: p.popularity || 50,
-      known_for: (p.known_for || []).map((k: any) => formatTMDBItem(k, k.media_type || 'movie')),
-    }));
+    return data.results.map(formatTMDBPerson);
   }
   return [];
+}
+
+function formatTMDBPerson(person: any): PersonItem {
+  return {
+    id: person.id,
+    name: person.name,
+    profile_path: person.profile_path ? getTMDBImageUrl(person.profile_path, 'w500') : null,
+    known_for_department: person.known_for_department || 'Acting',
+    popularity: person.popularity || 50,
+    known_for: (person.known_for || []).map((item: any) => formatTMDBItem(item, item.media_type || 'movie')),
+  };
+}
+
+export async function getPopularPeople(page = 1): Promise<{ results: PersonItem[]; total_pages: number; total_results: number }> {
+  const data = await fetchFromTMDB<{ results: any[]; total_pages: number; total_results: number }>(`/person/popular`, { page });
+  if (data?.results?.length) {
+    return {
+      results: data.results.map(formatTMDBPerson),
+      total_pages: Math.min(data.total_pages, 50),
+      total_results: data.total_results,
+    };
+  }
+  return { results: [], total_pages: 1, total_results: 0 };
 }
 
 export async function getPersonDetails(id: number | string): Promise<PersonItem | null> {

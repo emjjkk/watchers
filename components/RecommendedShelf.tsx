@@ -5,46 +5,98 @@ import HorizontalShelf from './HorizontalShelf';
 import { useAuth } from '@/context/AuthContext';
 import { useMedia } from '@/context/MediaContext';
 import { MediaItem } from '@/lib/types';
+import { FavoriteItem, WatchedItem, WatchlistItem } from '@/lib/supabase';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
+
+type RecommendationSeed = {
+  media_id: number;
+  media_type: 'movie' | 'tv';
+  weight: number;
+};
+
+function buildRecommendationSeeds(
+  favorites: FavoriteItem[],
+  watchedLog: WatchedItem[],
+  watchlist: WatchlistItem[]
+): RecommendationSeed[] {
+  const seeds = new Map<string, RecommendationSeed>();
+
+  const addSeed = (mediaId: number, mediaType: 'movie' | 'tv', weight: number) => {
+    const key = `${mediaType}-${mediaId}`;
+    const existing = seeds.get(key);
+    seeds.set(key, { media_id: mediaId, media_type: mediaType, weight: (existing?.weight || 0) + weight });
+  };
+
+  favorites.forEach(item => {
+    if (item.media_type !== 'person') addSeed(item.media_id, item.media_type, 5);
+  });
+  watchedLog.forEach(item => addSeed(item.media_id, item.media_type, item.rating >= 4 ? 4 : item.rating >= 3 ? 2 : 0.5));
+  watchlist.forEach(item => addSeed(item.media_id, item.media_type, 3));
+
+  return Array.from(seeds.values()).sort((a, b) => b.weight - a.weight).slice(0, 6);
+}
 
 export default function RecommendedShelf() {
   const { user } = useAuth();
-  const { watchedLog, watchlist } = useMedia();
+  const { watchedLog, watchlist, favorites } = useMedia();
   const [recommended, setRecommended] = useState<MediaItem[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setRecommended([]);
+      return;
+    }
 
     let isMounted = true;
-    const seedItem = watchlist[0] || watchedLog[0];
+    const seeds = buildRecommendationSeeds(favorites, watchedLog, watchlist);
+    const excludedIds = new Set(
+      [...watchedLog, ...watchlist, ...favorites]
+        .filter(item => item.media_type !== 'person')
+        .map(item => `${item.media_type}-${item.media_id}`)
+    );
 
-    if (seedItem) {
-      // Fetch TMDB recommendations or discover based on user's real saved item
-      fetch(`/api/tmdb/discover?type=${seedItem.media_type}&page=1&sort_by=vote_average.desc`)
-        .then(r => r.json())
-        .then(d => {
-          if (!isMounted) return;
-          const loggedIds = new Set([...watchedLog.map(w => w.media_id), ...watchlist.map(w => w.media_id)]);
-          const items: MediaItem[] = (d?.results || []).filter((m: MediaItem) => !loggedIds.has(m.id)).slice(0, 8);
-          setRecommended(items);
-        })
-        .catch(() => {});
+    const loadRecommendations = async () => {
+      try {
+        const responses = await Promise.all(
+          seeds.map(seed => fetch(`/api/tmdb/recommendations?type=${seed.media_type}&id=${seed.media_id}`).then(r => r.json()))
+        );
+        if (!isMounted) return;
+
+        const scores = new Map<string, { item: MediaItem; score: number }>();
+        responses.forEach((response, index) => {
+          const seed = seeds[index];
+          (response?.results || []).forEach((item: MediaItem, resultIndex: number) => {
+            const key = `${item.media_type}-${item.id}`;
+            if (excludedIds.has(key)) return;
+            const score = seed.weight * 100 + item.popularity + Math.max(0, item.vote_average - 6) * 5 - resultIndex;
+            const existing = scores.get(key);
+            if (!existing || score > existing.score) scores.set(key, { item, score });
+          });
+        });
+
+        setRecommended(Array.from(scores.values()).sort((a, b) => b.score - a.score).slice(0, 8).map(entry => entry.item));
+      } catch {
+        if (isMounted) setRecommended([]);
+      }
+    };
+
+    if (seeds.length > 0) {
+      loadRecommendations();
     } else {
-      // If user hasn't added any yet, show top popular movies from TMDB API
-      fetch(`/api/tmdb/discover?type=movie&page=1&sort_by=popularity.desc`)
-        .then(r => r.json())
-        .then(d => {
-          if (!isMounted) return;
-          setRecommended((d?.results || []).slice(0, 8));
+      fetch('/api/tmdb/discover?type=movie&page=1&sort_by=popularity.desc')
+        .then(response => response.json())
+        .then(data => {
+          if (isMounted) setRecommended((data?.results || []).slice(0, 8));
         })
-        .catch(() => {});
+        .catch(() => {
+          if (isMounted) setRecommended([]);
+        });
     }
 
     return () => {
       isMounted = false;
     };
-  }, [user, watchedLog, watchlist]);
+  }, [user, watchedLog, watchlist, favorites]);
 
   if (!user) {
     return (

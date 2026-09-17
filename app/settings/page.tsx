@@ -206,7 +206,7 @@ export default function SettingsPage() {
 
     setIsSaving(true);
     try {
-      const finalAvatar = avatarUrl.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+      const finalAvatar = avatarUrl.trim();
       const finalBanner = bannerImage.trim();
       const finalDisplayName = displayName.trim() || cleanUsername;
       const finalBio = bio.trim();
@@ -332,7 +332,7 @@ export default function SettingsPage() {
                   unoptimized={avatarPreview.startsWith('blob:') || avatarPreview.startsWith('data:')}
                   referrerPolicy="no-referrer"
                   onError={() => {
-                    setAvatarPreview('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150');
+                    setAvatarPreview('');
                   }}
                 />
               ) : (

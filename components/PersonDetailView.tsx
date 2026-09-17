@@ -17,7 +17,7 @@ interface PersonDetailViewProps {
 export default function PersonDetailView({ person }: PersonDetailViewProps) {
   const { user } = useAuth();
   const { isPersonFavorite, togglePersonFavorite } = useMedia();
-  const { openAuthPrompt } = useModal();
+  const { openAuthPrompt, showToast } = useModal();
   const [sortKey, setSortKey] = useState<'date' | 'popularity'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [filterType, setFilterType] = useState<'all' | 'movie' | 'tv'>('all');
@@ -30,6 +30,7 @@ export default function PersonDetailView({ person }: PersonDetailViewProps) {
       return;
     }
     togglePersonFavorite(person);
+    showToast(favorited ? 'Removed from your favorites.' : 'Added to your favorites.');
   };
 
   // Sorting filmography

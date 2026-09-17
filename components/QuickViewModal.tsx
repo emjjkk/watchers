@@ -11,7 +11,7 @@ import { derivePalette } from '@/lib/media-utils';
 import { getWatchProviderUrl } from '@/lib/providers';
 
 export default function QuickViewModal() {
-  const { quickViewItem, closeQuickView, openLogWatched, openTrailer, openAuthPrompt } = useModal();
+  const { quickViewItem, closeQuickView, openLogWatched, openTrailer, openAuthPrompt, showToast } = useModal();
   const { isWatchlisted, toggleWatchlist, isWatched, getReviewsForMedia } = useMedia();
   const { user } = useAuth();
 
@@ -53,6 +53,7 @@ export default function QuickViewModal() {
       return;
     }
     toggleWatchlist(quickViewItem);
+    showToast(inWatchlist ? 'Removed from your watchlist.' : 'Added to your watchlist.');
   };
 
   const handleWatched = () => {

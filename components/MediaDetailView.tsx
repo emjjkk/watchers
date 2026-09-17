@@ -30,7 +30,7 @@ interface MediaDetailViewProps {
 }
 
 export default function MediaDetailView({ media }: MediaDetailViewProps) {
-  const { openLogWatched, openShare, openTrailer, openAuthPrompt } = useModal();
+  const { openLogWatched, openShare, openTrailer, openAuthPrompt, showToast } = useModal();
   const { isWatchlisted, toggleWatchlist, isFavorite, toggleFavorite, isWatched, getReviewsForMedia, voteReview } =
     useMedia();
   const { user } = useAuth();
@@ -55,6 +55,7 @@ export default function MediaDetailView({ media }: MediaDetailViewProps) {
       return;
     }
     toggleWatchlist(media);
+    showToast(inWatchlist ? 'Removed from your watchlist.' : 'Added to your watchlist.');
   };
 
   const handleWatchedClick = () => {
@@ -71,6 +72,7 @@ export default function MediaDetailView({ media }: MediaDetailViewProps) {
       return;
     }
     toggleFavorite(media);
+    showToast(favorited ? 'Removed from your favorites.' : 'Added to your favorites.');
   };
 
   const handleAddReviewClick = () => {

@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { derivePalette } from '@/lib/media-utils';
 
 export default function LogWatchedModal() {
-  const { logWatchedItem, closeLogWatched, openAuthPrompt } = useModal();
+  const { logWatchedItem, closeLogWatched, openAuthPrompt, showToast } = useModal();
   const { logWatched, getWatchedItem, toggleFavorite, isFavorite } = useMedia();
   const { user } = useAuth();
 
@@ -60,6 +60,7 @@ export default function LogWatchedModal() {
       toggleFavorite(logWatchedItem);
     }
 
+    showToast(reviewText.trim() ? 'Rating and review saved successfully.' : 'Rating saved successfully.');
     setIsSaved(true);
     setTimeout(() => {
       closeLogWatched();

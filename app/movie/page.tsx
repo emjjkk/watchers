@@ -2,8 +2,16 @@ import React, { Suspense } from 'react';
 import MediaCatalog from '@/components/MediaCatalog';
 import { MOVIE_GENRES } from '@/lib/data/genres';
 import { getPopularMovies } from '@/lib/tmdb';
+import type { Metadata } from 'next';
+import { createMetadata } from '@/lib/seo';
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = createMetadata({
+  title: 'Explore Movies',
+  description: 'Browse popular movies, new releases, genres, ratings, reviews, and watchlists on Weflixd.',
+  path: '/movie',
+});
 
 export default async function MoviesPage() {
   const popular = await getPopularMovies();

@@ -21,12 +21,17 @@ export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<'movies' | 'tv' | null>(null);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMac, setIsMac] = useState(false);
   const [featuredMovies, setFeaturedMovies] = useState<MediaItem[]>([]);
   const [featuredTV, setFeaturedTV] = useState<MediaItem[]>([]);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Load real featured items from TMDB once on mount
+  useEffect(() => {
+    setIsMac(navigator.platform.toLowerCase().includes('mac'));
+  }, []);
+
   useEffect(() => {
     fetch('/api/tmdb/discover?type=movie&page=1')
       .then(r => r.json())
@@ -152,7 +157,7 @@ export default function Navbar() {
               <Search className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <span className="hidden sm:inline">Search movies, TV, people...</span>
               <kbd className="hidden lg:inline-block text-[11px] font-mono px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-800 rounded text-zinc-500">
-                ⌘K
+                {isMac ? '⌘K' : '/'}
               </kbd>
             </button>
 
@@ -188,13 +193,17 @@ export default function Navbar() {
                     className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                   >
                     <div className="relative w-8 h-8 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-800">
-                      <Image
-                        src={user.avatar_url}
-                        alt={user.username}
-                        fill
-                        className="object-cover"
-                        referrerPolicy="no-referrer"
-                      />
+                      {user.avatar_url ? (
+                        <Image
+                          src={user.avatar_url}
+                          alt={user.username}
+                          fill
+                          className="object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 m-auto text-zinc-500" />
+                      )}
                     </div>
                     <span className="hidden sm:inline text-sm font-medium text-zinc-800 dark:text-zinc-200">
                       {user.username}

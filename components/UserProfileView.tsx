@@ -14,10 +14,12 @@ import {
   Settings,
   UserPlus,
   UserCheck,
+  User,
 } from 'lucide-react';
 import MediaCard from './MediaCard';
 import { useMedia } from '@/context/MediaContext';
 import { useAuth } from '@/context/AuthContext';
+import { useModal } from '@/context/ModalContext';
 import { MediaItem } from '@/lib/types';
 import {
   supabase,
@@ -32,6 +34,8 @@ import {
   fetchUserWatchedDB,
   fetchReviewsDB,
   fetchFollowStatsDB,
+  fetchFollowProfilesDB,
+  FollowListType,
   toggleFollowDB,
   FollowStats,
 } from '@/lib/supabase';
@@ -43,8 +47,66 @@ interface UserProfileViewProps {
 type ProfileTab = 'favorites' | 'watched' | 'watchlist' | 'reviews';
 type FavoriteFilter = 'movie' | 'tv' | 'person';
 
+function FollowList({
+  type,
+  profiles,
+  onClose,
+}: {
+  type: 'followers' | 'following';
+  profiles: UserProfile[];
+  onClose: () => void;
+}) {
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            {type === 'followers' ? 'Followers' : 'Following'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            Close
+          </button>
+        </div>
+
+        {profiles.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {profiles.map(profile => (
+              <Link
+                key={profile.id}
+                href={`/profile/${encodeURIComponent(profile.username)}`}
+                className="flex items-center gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/70 transition-colors"
+              >
+                <div className="relative w-9 h-9 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center">
+                  {profile.avatar_url ? (
+                    <Image src={profile.avatar_url} alt={profile.username} fill className="object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User className="w-4 h-4 text-zinc-500" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{profile.display_name}</p>
+                  <p className="text-xs text-zinc-500 truncate">@{profile.username}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="py-5 text-center text-xs text-zinc-500">
+            {type === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function UserProfileView({ username }: UserProfileViewProps) {
   const { user: authUser } = useAuth();
+  const { showToast } = useModal();
   const {
     favorites: myFavorites,
     watchlist: myWatchlist,
@@ -64,6 +126,9 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
   const [dbWatchedLog, setDbWatchedLog] = useState<WatchedItem[] | null>(null);
   const [dbReviews, setDbReviews] = useState<ReviewItem[] | null>(null);
   const [followStats, setFollowStats] = useState<FollowStats>({ followers: 0, following: 0, isFollowing: false });
+  const [followerProfiles, setFollowerProfiles] = useState<UserProfile[]>([]);
+  const [followingProfiles, setFollowingProfiles] = useState<UserProfile[]>([]);
+  const [activeFollowList, setActiveFollowList] = useState<FollowListType | null>(null);
   const [favoriteFilter, setFavoriteFilter] = useState<FavoriteFilter>('movie');
 
   useEffect(() => {
@@ -110,6 +175,19 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
     fetchFollowStatsDB(authUser.id, authUser.id).then(setFollowStats);
   }, [isCurrentUser, authUser?.id]);
 
+  const profileId = isCurrentUser ? authUser?.id : dbProfile?.id;
+
+  useEffect(() => {
+    if (!profileId) return;
+    Promise.all([
+      fetchFollowProfilesDB(profileId, 'followers'),
+      fetchFollowProfilesDB(profileId, 'following'),
+    ]).then(([followers, following]) => {
+      setFollowerProfiles(followers);
+      setFollowingProfiles(following);
+    });
+  }, [profileId]);
+
   if (!isCurrentUser && isLoadingProfile) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
@@ -142,9 +220,7 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
     ? authUser?.display_name || authUser?.username || username
     : dbProfile?.display_name || dbProfile?.username || username;
 
-  const avatarUrl = isCurrentUser
-    ? authUser?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-    : dbProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+  const avatarUrl = isCurrentUser ? authUser?.avatar_url || '' : dbProfile?.avatar_url || '';
 
   const bannerImage = isCurrentUser
     ? authUser?.banner_image || 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1800&q=80'
@@ -185,6 +261,8 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
         isFollowing: !nextFollowing,
         followers: prev.followers + (nextFollowing ? -1 : 1),
       }));
+    } else {
+      showToast(nextFollowing ? `You are now following @${dbProfile.username}.` : `Unfollowed @${dbProfile.username}.`);
     }
   };
 
@@ -206,13 +284,17 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 sm:-mt-24 relative z-10">
         <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 flex-shrink-0 bg-zinc-800 shadow-2xl">
-            <Image
-              src={avatarUrl}
-              alt={username}
-              fill
-              className="object-cover"
-              referrerPolicy="no-referrer"
-            />
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={username}
+                fill
+                className="object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <User className="w-12 h-12 m-auto text-zinc-400" />
+            )}
           </div>
 
           <div className="flex-1 min-w-0 pt-6 space-y-3">
@@ -226,8 +308,19 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
             {bio ? <p className="text-sm text-zinc-600 dark:text-zinc-300 max-w-2xl">{bio}</p> : null}
 
             <div className="flex items-center gap-4 text-xs text-zinc-500">
-              <span><strong className="text-zinc-900 dark:text-zinc-100">{followStats.followers}</strong> Followers</span>
-              <span><strong className="text-zinc-900 dark:text-zinc-100">{followStats.following}</strong> Following</span>
+              {[
+                { type: 'followers' as const, label: 'Followers', count: followStats.followers },
+                { type: 'following' as const, label: 'Following', count: followStats.following },
+              ].map(item => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => setActiveFollowList(activeFollowList === item.type ? null : item.type)}
+                  className="text-left hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                >
+                  <strong className="text-zinc-900 dark:text-zinc-100">{item.count}</strong> {item.label}
+                </button>
+              ))}
             </div>
           </div>
           {isCurrentUser && (
@@ -254,6 +347,14 @@ export default function UserProfileView({ username }: UserProfileViewProps) {
           )}
         </div>
       </div>
+
+      {activeFollowList && (
+        <FollowList
+          type={activeFollowList}
+          profiles={activeFollowList === 'followers' ? followerProfiles : followingProfiles}
+          onClose={() => setActiveFollowList(null)}
+        />
+      )}
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-4 overflow-x-auto no-scrollbar">

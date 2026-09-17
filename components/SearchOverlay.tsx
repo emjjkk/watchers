@@ -12,7 +12,7 @@ import { ReviewItem, UserProfile, searchProfilesDB } from '@/lib/supabase';
 type SearchTab = 'all' | 'movies' | 'tv' | 'people' | 'profiles' | 'reviews';
 
 export default function SearchOverlay() {
-  const { isSearchOpen, closeSearch } = useModal();
+  const { isSearchOpen, openSearch, closeSearch } = useModal();
   const { reviews } = useMedia();
 
   const [query, setQuery] = useState('');
@@ -26,7 +26,7 @@ export default function SearchOverlay() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input and handle keyboard ESC & Cmd+K
+  // Focus input and handle keyboard shortcuts.
   useEffect(() => {
     if (isSearchOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -51,9 +51,17 @@ export default function SearchOverlay() {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         if (isSearchOpen) closeSearch();
+        else openSearch();
+      }
+      if (e.key === '/' && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        openSearch();
       }
       if (e.key === 'Escape' && isSearchOpen) {
         closeSearch();
@@ -65,7 +73,7 @@ export default function SearchOverlay() {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'auto';
     };
-  }, [isSearchOpen, closeSearch, query, movies.length]);
+  }, [isSearchOpen, openSearch, closeSearch, query, movies.length]);
 
   // Live query debounce
   useEffect(() => {

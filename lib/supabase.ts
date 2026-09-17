@@ -74,6 +74,8 @@ export interface FollowStats {
   isFollowing: boolean;
 }
 
+export type FollowListType = 'followers' | 'following';
+
 export interface ActivityItem {
   id: string;
   type: 'review' | 'watched';
@@ -128,7 +130,7 @@ export async function fetchUserProfileDB(usernameOrId: string): Promise<UserProf
       id: data.id,
       username: data.username,
       display_name: data.display_name || data.username,
-      avatar_url: data.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      avatar_url: data.avatar_url || '',
       banner_image: data.banner_image || '',
       bio: data.bio || '',
       provider: data.provider || 'google',
@@ -183,7 +185,7 @@ export async function searchProfilesDB(queryText: string): Promise<UserProfile[]
       id: d.id,
       username: d.username,
       display_name: d.display_name || d.username,
-      avatar_url: d.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      avatar_url: d.avatar_url || '',
       bio: d.bio || '',
       provider: d.provider || 'google',
       created_at: d.created_at,
@@ -323,6 +325,43 @@ export async function fetchFollowStatsDB(profileId: string, viewerId?: string): 
     return { followers: followers || 0, following: following || 0, isFollowing: Boolean(followingResult.data) };
   } catch {
     return { followers: 0, following: 0, isFollowing: false };
+  }
+}
+
+export async function fetchFollowProfilesDB(profileId: string, type: FollowListType): Promise<UserProfile[]> {
+  if (!supabase) return [];
+  try {
+    const targetColumn = type === 'followers' ? 'following_id' : 'follower_id';
+    const { data: follows, error: followsError } = await supabase
+      .from('follows')
+      .select('follower_id, following_id')
+      .eq(targetColumn, profileId);
+
+    if (followsError) throw followsError;
+    const profileIds = (follows || [])
+      .map(follow => type === 'followers' ? follow.follower_id : follow.following_id)
+      .filter(Boolean);
+    if (profileIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', profileIds);
+
+    if (error) throw error;
+    return (data || []).map(profile => ({
+      id: profile.id,
+      username: profile.username,
+      display_name: profile.display_name || profile.username,
+      avatar_url: profile.avatar_url || '',
+      banner_image: profile.banner_image || '',
+      bio: profile.bio || '',
+      provider: profile.provider || 'google',
+      created_at: profile.created_at,
+    }));
+  } catch (err) {
+    console.warn(`[Supabase] fetch ${type} error:`, err);
+    return [];
   }
 }
 

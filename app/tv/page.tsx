@@ -2,8 +2,16 @@ import React, { Suspense } from 'react';
 import MediaCatalog from '@/components/MediaCatalog';
 import { TV_GENRES } from '@/lib/data/genres';
 import { getPopularTV } from '@/lib/tmdb';
+import type { Metadata } from 'next';
+import { createMetadata } from '@/lib/seo';
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = createMetadata({
+  title: 'Explore TV Shows',
+  description: 'Discover popular TV shows, new series, genres, ratings, reviews, and watchlists on Weflixd.',
+  path: '/tv',
+});
 
 export default async function TVShowsPage() {
   const popular = await getPopularTV();

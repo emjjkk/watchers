@@ -13,6 +13,7 @@ import LogWatchedModal from '@/components/LogWatchedModal';
 import TrailerModal from '@/components/TrailerModal';
 import SocialShareModal from '@/components/SocialShareModal';
 import AuthPromptModal from '@/components/AuthPromptModal';
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
 
 const outfit = Geist({
   subsets: ['latin'],
@@ -21,20 +22,29 @@ const outfit = Geist({
 });
 
 export const metadata: Metadata = {
-  title: 'Weflixd - Movie & TV Show Reviews, Watchlists, & Social Diary',
-  description:
-    'A modern movie and TV show search, review, social logging, and recommendation platform.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} - Movie & TV Show Reviews, Watchlists, & Social Diary`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  keywords: ['movies', 'TV shows', 'movie reviews', 'watchlist', 'film diary', 'movie recommendations'],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  alternates: { canonical: SITE_URL },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'Weflixd - Movie & TV Show Reviews, Watchlists, & Social Diary',
-    description:
-      'A modern movie and TV show search, review, social logging, and recommendation platform.',
+    title: `${SITE_NAME} - Movie & TV Show Reviews, Watchlists, & Social Diary`,
+    description: DEFAULT_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Weflixd - Movie & TV Show Reviews, Watchlists, & Social Diary',
-    description:
-      'A modern movie and TV show search, review, social logging, and recommendation platform.',
+    title: `${SITE_NAME} - Movie & TV Show Reviews, Watchlists, & Social Diary`,
+    description: DEFAULT_DESCRIPTION,
   },
 };
 

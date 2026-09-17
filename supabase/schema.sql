@@ -264,7 +264,7 @@ BEGIN
       SPLIT_PART(COALESCE(NEW.email, 'watcher'), '@', 1)
     ),
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'Watcher'),
-    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'),
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', ''),
     'Cinema explorer on Weflixd.',
     COALESCE(NEW.raw_app_meta_data->>'provider', 'google')
   )
