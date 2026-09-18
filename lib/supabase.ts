@@ -458,25 +458,49 @@ export async function fetchUserWatchedDB(userId: string): Promise<WatchedItem[] 
 
 export async function upsertWatchedDB(item: Omit<WatchedItem, 'id'>): Promise<WatchedItem | null> {
   if (!supabase) return null;
+  const watchedPayload = {
+    user_id: item.user_id,
+    username: item.username,
+    media_id: item.media_id,
+    media_type: item.media_type,
+    title: item.title,
+    poster_path: item.poster_path,
+    backdrop_path: item.backdrop_path,
+    rating: item.rating,
+    review: item.review,
+    watched_date: item.watched_date,
+  };
+
   try {
     const { data, error } = await supabase
       .from('watched')
-      .upsert({
-        user_id: item.user_id,
-        username: item.username,
-        media_id: item.media_id,
-        media_type: item.media_type,
-        title: item.title,
-        poster_path: item.poster_path,
-        backdrop_path: item.backdrop_path,
-        rating: item.rating,
-        review: item.review,
-        watched_date: item.watched_date,
-      }, { onConflict: 'user_id,media_id,media_type' })
+      .upsert(watchedPayload, { onConflict: 'user_id,media_id,media_type' })
       .select()
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      // Older databases may not have the unique constraint required by upsert.
+      if (error.code !== '42P10' && !error.message.toLowerCase().includes('on conflict')) {
+        throw error;
+      }
+
+      const { data: existing, error: lookupError } = await supabase
+        .from('watched')
+        .select('id')
+        .match({ user_id: item.user_id, media_id: item.media_id, media_type: item.media_type })
+        .maybeSingle();
+
+      if (lookupError) throw lookupError;
+
+      const fallbackQuery = existing
+        ? supabase.from('watched').update(watchedPayload).eq('id', existing.id)
+        : supabase.from('watched').insert(watchedPayload);
+      const { data: fallbackData, error: fallbackError } = await fallbackQuery.select().maybeSingle();
+
+      if (fallbackError) throw fallbackError;
+      return fallbackData as WatchedItem;
+    }
+
     return data as WatchedItem;
   } catch (err) {
     console.warn('[Supabase] upsertWatched error:', err);

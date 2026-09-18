@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS public.watched (
 CREATE INDEX IF NOT EXISTS idx_watched_user_id ON public.watched(user_id);
 CREATE INDEX IF NOT EXISTS idx_watched_media ON public.watched(media_id, media_type);
 CREATE INDEX IF NOT EXISTS idx_watched_date ON public.watched(watched_date DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_user_watched_media_idx
+  ON public.watched(user_id, media_id, media_type);
 
 -- 4. WATCHLIST TABLE
 CREATE TABLE IF NOT EXISTS public.watchlist (
