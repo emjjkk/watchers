@@ -42,7 +42,7 @@ export function derivePalette(media: Partial<MediaItem>): { dominant: string; ac
 }
 
 async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string | number> = {}): Promise<T | null> {
-  const apiKey = process.env.TMDB_API_KEY;
+  const apiKey = process.env.TMDB_API_KEY?.trim().replace(/^(['"])(.*)\1$/, '$2');
   if (!apiKey) return null;
 
   const queryParams = new URLSearchParams();
