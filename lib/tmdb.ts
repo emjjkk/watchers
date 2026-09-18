@@ -73,14 +73,16 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string 
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const res = await fetch(url, { headers, next: { revalidate: 3600 } });
-    if (!res.ok) {
-      console.warn(`[TMDB] HTTP ${res.status} for ${endpoint}`);
-      return null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const res = await fetch(url, { headers, next: { revalidate: 3600 } });
+      if (res.ok) {
+        const data = await res.json() as T;
+        await setCached(cacheKey, data, 3600);
+        return data;
+      }
+      console.warn(`[TMDB] HTTP ${res.status} for ${endpoint} (attempt ${attempt + 1})`);
     }
-    const data = await res.json() as T;
-    await setCached(cacheKey, data, 3600);
-    return data;
+    return null;
   } catch (err) {
     console.warn('[TMDB] Fetch error:', err);
     return null;
