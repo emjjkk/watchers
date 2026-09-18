@@ -46,8 +46,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/people" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Site
+                <Link href="https://github.com/emjjkk/weflixd" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
+                  Open Source
                 </Link>
               </li>
             </ul>
