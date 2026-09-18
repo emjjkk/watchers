@@ -5,16 +5,18 @@ import PeopleShelf from '@/components/PeopleShelf';
 import GenresGrid from '@/components/GenresGrid';
 import RecommendedShelf from '@/components/RecommendedShelf';
 import RecentReviewsFeed from '@/components/RecentReviewsFeed';
-import { getTrendingMedia, getTrendingPeople, getPopularMovies, getPopularTV } from '@/lib/tmdb';
+import { getTrendingMedia, getTrendingPeople, getPopularMovies } from '@/lib/tmdb';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const trendingAll = await getTrendingMedia('all', 'week');
-  const trendingMovies = await getTrendingMedia('movie', 'day');
-  const trendingTV = await getTrendingMedia('tv', 'day');
-  const latestMovies = await getPopularMovies({ sortBy: 'release_date.desc' });
-  const trendingPeople = await getTrendingPeople();
+  const [trendingAll, trendingMovies, trendingTV, latestMovies, trendingPeople] = await Promise.all([
+    getTrendingMedia('all', 'week'),
+    getTrendingMedia('movie', 'day'),
+    getTrendingMedia('tv', 'day'),
+    getPopularMovies({ sortBy: 'release_date.desc' }),
+    getTrendingPeople(),
+  ]);
 
   return (
     <div className="w-full flex flex-col space-y-12 pb-16">
