@@ -4,7 +4,7 @@ type LogoProps = {
   className?: string
 }
 
-export function Logo({ size = 24, color = "#0c0c0c", className }: LogoProps) {
+export function Logo({ size = 24, color = 'currentColor', className }: LogoProps) {
   return (
     <svg
       width={size}

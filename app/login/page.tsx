@@ -78,8 +78,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14">
-            <Logo size={40} color='white' />
+          <div className="inline-flex items-center justify-center w-14 h-14 text-zinc-900 dark:text-white">
+            <Logo size={40} />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">
             Welcome back!

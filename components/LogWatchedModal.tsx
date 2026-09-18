@@ -44,7 +44,7 @@ export default function LogWatchedModal() {
 
   const palette = derivePalette(logWatchedItem);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
       closeLogWatched();
@@ -52,7 +52,11 @@ export default function LogWatchedModal() {
       return;
     }
 
-    logWatched(logWatchedItem, rating, watchedDate, reviewText);
+    const saved = await logWatched(logWatchedItem, rating, watchedDate, reviewText);
+    if (!saved) {
+      showToast('Could not save your watchlog. Please try again.');
+      return;
+    }
 
     if (markFavorite && !isFavorite(logWatchedItem.id, logWatchedItem.media_type)) {
       toggleFavorite(logWatchedItem);

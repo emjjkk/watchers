@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   },
   // Allow access to remote image placeholders and providers.
   images: {
+    // The production host returns 402 for its image optimizer. Keep remote
+    // images working without routing them through /_next/image.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

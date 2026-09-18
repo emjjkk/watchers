@@ -56,7 +56,7 @@ export default function AuthPromptModal() {
         {/* Header with Icon */}
         <div className="text-center space-y-3 pt-2">
           <div className="inline-flex items-center justify-center w-14 h-14">
-            <Logo size={40} color='white'/>
+            <Logo size={40}/>
           </div>
           <h2 id="auth-modal-title" className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">
             Sign In to Weflixd

@@ -12,7 +12,7 @@ export default function Footer() {
           {/* Brand & Mission */}
           <div className="md:col-span-2 space-y-3">
             <span className="text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 mb-5 flex items-center gap-2">
-              <Logo size={40} color='white'/> Weflixd.live
+              <Logo size={40}/> Weflixd.live
             </span>
             <p className="text-xs leading-relaxed max-w-sm text-zinc-500 dark:text-zinc-400">
               The social cinema platform for film & television lovers. Track what you watch, save to your watchlist, rate out of five, and read reviews from the community.

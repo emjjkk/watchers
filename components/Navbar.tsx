@@ -81,7 +81,7 @@ export default function Navbar() {
               id="brand-logo"
               className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 hover:opacity-90 transition-opacity"
             >
-              <Logo size={40} color='white'/>
+              <Logo size={40}/>
             </Link>
 
             {/* Desktop Navigation */}

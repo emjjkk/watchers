@@ -36,7 +36,7 @@ interface MediaContextType {
   togglePersonFavorite: (person: { id: number; name: string; profile_path: string | null }) => void;
   isWatched: (mediaId: number, mediaType: 'movie' | 'tv') => boolean;
   getWatchedItem: (mediaId: number, mediaType: 'movie' | 'tv') => WatchedItem | undefined;
-  logWatched: (media: MediaItem, rating: number, watchedDate: string, reviewText?: string) => void;
+  logWatched: (media: MediaItem, rating: number, watchedDate: string, reviewText?: string) => Promise<boolean>;
   voteReview: (reviewId: string, direction: 'up' | 'down') => void;
   getReviewsForMedia: (mediaId: number, mediaType: 'movie' | 'tv') => ReviewItem[];
   getReviewsByUser: (username: string) => ReviewItem[];
@@ -323,13 +323,13 @@ export function MediaProvider({ children }: { children: React.ReactNode }) {
     return watchedLog.find(item => item.media_id === mediaId && item.media_type === mediaType);
   };
 
-  const logWatched = (
+  const logWatched = async (
     media: MediaItem,
     rating: number,
     watchedDate: string,
     reviewText?: string
-  ) => {
-    if (!user) return;
+  ): Promise<boolean> => {
+    if (!user) return false;
 
     const existingIndex = watchedLog.findIndex(
       item => item.media_id === media.id && item.media_type === media.media_type
@@ -349,16 +349,8 @@ export function MediaProvider({ children }: { children: React.ReactNode }) {
       created_at: new Date().toISOString(),
     };
 
-    if (existingIndex >= 0) {
-      const updated = [...watchedLog];
-      updated[existingIndex] = newLogItem;
-      setWatchedLog(updated);
-    } else {
-      setWatchedLog(prev => [newLogItem, ...prev]);
-    }
-
     if (supabase && user.id) {
-      upsertWatchedDB({
+      const savedItem = await upsertWatchedDB({
         media_id: media.id,
         media_type: media.media_type,
         title: media.title,
@@ -371,6 +363,17 @@ export function MediaProvider({ children }: { children: React.ReactNode }) {
         username: user.username,
         created_at: newLogItem.created_at,
       });
+      if (!savedItem) return false;
+    } else {
+      return false;
+    }
+
+    if (existingIndex >= 0) {
+      const updated = [...watchedLog];
+      updated[existingIndex] = newLogItem;
+      setWatchedLog(updated);
+    } else {
+      setWatchedLog(prev => [newLogItem, ...prev]);
     }
 
     // Also add to community reviews if review text is provided
@@ -413,6 +416,8 @@ export function MediaProvider({ children }: { children: React.ReactNode }) {
         });
       }
     }
+
+    return true;
   };
 
   const voteReview = (reviewId: string, direction: 'up' | 'down') => {

@@ -304,6 +304,21 @@ export async function getPopularPeople(page = 1): Promise<{ results: PersonItem[
   return { results: [], total_pages: 1, total_results: 0 };
 }
 
+export async function searchPeople(query: string, page = 1): Promise<{ results: PersonItem[]; total_pages: number; total_results: number }> {
+  const data = await fetchFromTMDB<{ results: any[]; total_pages: number; total_results: number }>(`/search/person`, {
+    query,
+    page,
+  });
+  if (data?.results?.length) {
+    return {
+      results: data.results.map(formatTMDBPerson),
+      total_pages: Math.min(data.total_pages, 50),
+      total_results: data.total_results,
+    };
+  }
+  return { results: [], total_pages: 1, total_results: 0 };
+}
+
 export async function getPersonDetails(id: number | string): Promise<PersonItem | null> {
   const data = await fetchFromTMDB<any>(`/person/${id}`, {
     append_to_response: 'combined_credits',

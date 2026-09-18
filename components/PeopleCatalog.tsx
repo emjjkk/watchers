@@ -22,7 +22,7 @@ export default function PeopleCatalog({ initialPeople, totalPages = 1 }: PeopleC
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (currentPage === 1) {
+    if (!query.trim() && currentPage === 1) {
       setPeople(initialPeople);
       setPageCount(totalPages);
       return;
@@ -30,7 +30,9 @@ export default function PeopleCatalog({ initialPeople, totalPages = 1 }: PeopleC
 
     let isMounted = true;
     setIsLoading(true);
-    fetch(`/api/tmdb/people?page=${currentPage}`)
+    const params = new URLSearchParams({ page: String(currentPage) });
+    if (query.trim()) params.set('query', query.trim());
+    fetch(`/api/tmdb/people?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         if (!isMounted) return;
@@ -47,7 +49,7 @@ export default function PeopleCatalog({ initialPeople, totalPages = 1 }: PeopleC
     return () => {
       isMounted = false;
     };
-  }, [currentPage, initialPeople, totalPages]);
+  }, [currentPage, initialPeople, totalPages, query]);
 
   const updatePage = (page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -57,22 +59,8 @@ export default function PeopleCatalog({ initialPeople, totalPages = 1 }: PeopleC
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setQuery(val);
-    if (!val.trim()) {
-      setPeople(initialPeople);
-    } else {
-      const q = val.toLowerCase();
-      setPeople(
-        initialPeople.filter(
-          p =>
-            p.name.toLowerCase().includes(q) ||
-            p.known_for_department.toLowerCase().includes(q) ||
-            p.biography?.toLowerCase().includes(q) ||
-            p.known_for?.some(k => k.title.toLowerCase().includes(q))
-        )
-      );
-    }
+    setQuery(e.target.value);
+    if (currentPage !== 1) updatePage(1);
   };
 
   return (
@@ -101,7 +89,7 @@ export default function PeopleCatalog({ initialPeople, totalPages = 1 }: PeopleC
             type="button"
             onClick={() => {
               setQuery('');
-              setPeople(initialPeople);
+              if (currentPage !== 1) updatePage(1);
             }}
             className="absolute right-2.5 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600"
           >
