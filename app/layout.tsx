@@ -34,18 +34,6 @@ export const metadata: Metadata = {
   publisher: SITE_NAME,
   alternates: { canonical: SITE_URL },
   robots: { index: true, follow: true },
-  openGraph: {
-    title: `${SITE_NAME} - Movie & TV Show Reviews, Watchlists, & Social Diary`,
-    description: DEFAULT_DESCRIPTION,
-    url: SITE_URL,
-    siteName: SITE_NAME,
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: `${SITE_NAME} - Movie & TV Show Reviews, Watchlists, & Social Diary`,
-    description: DEFAULT_DESCRIPTION,
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
