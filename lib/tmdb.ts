@@ -96,7 +96,7 @@ async function fetchFreshFromTMDB<T>(
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       const res = await fetch(url, { headers, next: { revalidate: 3600 } });
       if (res.ok) {
         const data = await res.json() as T;
@@ -104,6 +104,10 @@ async function fetchFreshFromTMDB<T>(
         return data;
       }
       console.warn(`[TMDB] HTTP ${res.status} for ${endpoint} (attempt ${attempt + 1})`);
+      if (res.status !== 429 && res.status < 500) return stale;
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+      }
     }
     return stale;
   } catch (err) {

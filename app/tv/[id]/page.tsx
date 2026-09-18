@@ -1,6 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import MediaDetailView from '@/components/MediaDetailView';
+import MediaDetailRecovery from '@/components/MediaDetailRecovery';
 import { getMediaDetails } from '@/lib/tmdb';
 import { createMetadata, truncateDescription } from '@/lib/seo';
 import type { Metadata } from 'next';
@@ -30,7 +31,7 @@ export default async function TVDetailPage({ params }: TVPageProps) {
   if (isNaN(numId)) notFound();
 
   const media = await getMediaDetails(numId, 'tv');
-  if (!media) notFound();
+  if (!media) return <MediaDetailRecovery mediaType="tv" mediaId={numId} />;
 
   return <MediaDetailView media={media} />;
 }
