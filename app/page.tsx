@@ -10,13 +10,20 @@ import { getTrendingMedia, getTrendingPeople, getPopularMovies } from '@/lib/tmd
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const [trendingAll, trendingMovies, trendingTV, latestMovies, trendingPeople] = await Promise.all([
+  const results = await Promise.allSettled([
     getTrendingMedia('all', 'week'),
     getTrendingMedia('movie', 'day'),
     getTrendingMedia('tv', 'day'),
     getPopularMovies({ sortBy: 'release_date.desc' }),
     getTrendingPeople(),
   ]);
+  const [trendingAllResult, trendingMoviesResult, trendingTVResult, latestMoviesResult, trendingPeopleResult] = results;
+
+  const trendingAll = trendingAllResult.status === 'fulfilled' ? trendingAllResult.value : [];
+  const trendingMovies = trendingMoviesResult.status === 'fulfilled' ? trendingMoviesResult.value : [];
+  const trendingTV = trendingTVResult.status === 'fulfilled' ? trendingTVResult.value : [];
+  const latestMovies = latestMoviesResult.status === 'fulfilled' ? latestMoviesResult.value : { results: [] };
+  const trendingPeople = trendingPeopleResult.status === 'fulfilled' ? trendingPeopleResult.value : [];
 
   return (
     <div className="w-full flex flex-col space-y-12 pb-16">

@@ -1,10 +1,11 @@
 import { MediaItem, PersonItem, Genre, WatchProvidersResult, FilmographyCredit } from '@/lib/types';
 import { MOVIE_GENRES, TV_GENRES } from '@/lib/data/genres';
-import { getCached, setCached, checkRateLimit } from '@/lib/redis-cache';
+import { getCached, getStaleCached, setCached, checkRateLimit } from '@/lib/redis-cache';
 import { getWatchProviderUrl } from '@/lib/providers';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p';
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 export function getTMDBImageUrl(path: string | null, size: 'w300' | 'w500' | 'w780' | 'original' = 'w780'): string {
   if (!path) return 'https://picsum.photos/seed/movieplaceholder/780/1170';
@@ -62,9 +63,31 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string 
   const cached = await getCached<T>(cacheKey);
   if (cached) return cached;
 
+  const inFlight = inFlightRequests.get(cacheKey) as Promise<T | null> | undefined;
+  if (inFlight) return inFlight;
+
+  const request = fetchFreshFromTMDB<T>(endpoint, params, cacheKey, url, apiKey);
+  inFlightRequests.set(cacheKey, request);
+
+  try {
+    return await request;
+  } finally {
+    inFlightRequests.delete(cacheKey);
+  }
+}
+
+async function fetchFreshFromTMDB<T>(
+  endpoint: string,
+  _params: Record<string, string | number>,
+  cacheKey: string,
+  url: string,
+  apiKey: string
+): Promise<T | null> {
+  const stale = getStaleCached<T>(cacheKey);
+
   if (!checkRateLimit()) {
     console.warn('[TMDB] Rate limit exceeded, serving from fallback');
-    return null;
+    return stale;
   }
 
   try {
@@ -82,10 +105,10 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string 
       }
       console.warn(`[TMDB] HTTP ${res.status} for ${endpoint} (attempt ${attempt + 1})`);
     }
-    return null;
+    return stale;
   } catch (err) {
     console.warn('[TMDB] Fetch error:', err);
-    return null;
+    return stale;
   }
 }
 

@@ -1,5 +1,7 @@
 let redisClient: any = null;
 let isRedisInitAttempted = false;
+let redisUnavailable = false;
+const STALE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const inMemoryCache = new Map<string, { data: string; expiry: number }>();
 
 // Simple in-memory rate limiter bucket (max 35 req per 10 seconds)
@@ -9,7 +11,7 @@ const REFILL_INTERVAL_MS = 10000;
 
 async function getRedis(): Promise<any> {
   if (typeof window !== 'undefined') return null; // Client side
-  if (isRedisInitAttempted) return redisClient;
+  if (isRedisInitAttempted || redisUnavailable) return redisClient;
 
   isRedisInitAttempted = true;
   const url = process.env.REDIS_URL;
@@ -30,8 +32,8 @@ async function getRedis(): Promise<any> {
     await client.connect();
     redisClient = client;
   } catch (err: any) {
-    // Graceful fallback to in-memory cache without console spam
     redisClient = null;
+    redisUnavailable = true;
   }
   return redisClient;
 }
@@ -45,7 +47,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
       } catch {
         return null;
       }
-    } else {
+    } else if (Date.now() >= cached.expiry + STALE_CACHE_TTL_MS) {
       inMemoryCache.delete(key);
     }
   }
@@ -63,11 +65,24 @@ export async function getCached<T>(key: string): Promise<T | null> {
         return data;
       }
     } catch {
-      // Fall through to a cache miss.
+      redisClient = null;
+      redisUnavailable = true;
     }
   }
 
   return null;
+}
+
+export function getStaleCached<T>(key: string): T | null {
+  const cached = inMemoryCache.get(key);
+  if (!cached || Date.now() < cached.expiry || Date.now() >= cached.expiry + STALE_CACHE_TTL_MS) return null;
+
+  try {
+    return JSON.parse(cached.data) as T;
+  } catch {
+    inMemoryCache.delete(key);
+    return null;
+  }
 }
 
 export async function setCached<T>(key: string, data: T, ttlSeconds: number = 3600): Promise<void> {
@@ -84,7 +99,8 @@ export async function setCached<T>(key: string, data: T, ttlSeconds: number = 36
       await redis.setex(key, ttlSeconds, payload);
       return;
     } catch {
-      // Fall through to in-memory
+      redisClient = null;
+      redisUnavailable = true;
     }
   }
 
