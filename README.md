@@ -1,6 +1,10 @@
-# Weflixd
+<img width="100" height="100" style="margin-bottom: 20px;" alt="82fcd214-5d21-4d68-9f2c-d5224942a79f" src="https://github.com/user-attachments/assets/c33ac4aa-f80b-408b-9561-8e58d9bdc229" />
 
-Weflixd is a movie and TV show discovery platform with social features. It combines live data from The Movie Database (TMDB) with a Supabase-backed social layer, letting users browse and search titles, build a watchlist, log what they have watched with ratings and reviews, follow other members, and get personalized recommendations.
+
+
+# Weflixd 
+
+Movie and TV show discovery platform with social features. It combines live data from The Movie Database (TMDB) with a Supabase-backed social layer, letting users browse and search titles, build a watchlist, log what they have watched with ratings and reviews, follow other members, and get personalized recommendations.
 
 ## Table of Contents
 
