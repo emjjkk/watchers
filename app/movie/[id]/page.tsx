@@ -14,7 +14,7 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: MoviePageProps): Promise<Metadata> {
   const { id } = await params;
   const media = /^\d+$/.test(id) ? await getMediaDetails(Number(id), 'movie') : null;
-  if (!media) return { title: 'Movie not found' };
+  if (!media) return { title: 'Movie | Weflixd' };
   return createMetadata({
     title: `${media.title} (${(media.release_date || '').slice(0, 4) || 'Movie'})`,
     description: truncateDescription(media.overview, `Explore ${media.title}, read reviews, see where to watch it, and add it to your Weflixd watchlist.`),

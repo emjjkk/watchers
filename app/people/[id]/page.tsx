@@ -14,7 +14,7 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: PersonPageProps): Promise<Metadata> {
   const { id } = await params;
   const person = /^\d+$/.test(id) ? await getPersonDetails(Number(id)) : null;
-  if (!person) return { title: 'Person not found' };
+  if (!person) return { title: 'People | Weflixd' };
   return createMetadata({
     title: `${person.name} - ${person.known_for_department}`,
     description: truncateDescription(person.biography, `Discover ${person.name}'s filmography, career, and most notable movies and TV shows on Weflixd.`),

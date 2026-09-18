@@ -282,9 +282,14 @@ export async function getPopularTV(params: { page?: number; genre?: string; sort
 }
 
 export async function getMediaDetails(id: number | string, type: 'movie' | 'tv'): Promise<MediaItem | null> {
-  const data = await fetchFromTMDB<any>(`/${type}/${id}`, {
-    append_to_response: 'credits,videos,watch/providers,recommendations',
-  });
+  const params = { append_to_response: 'credits,videos,watch/providers,recommendations' };
+  let data = await fetchFromTMDB<any>(`/${type}/${id}`, params);
+
+  // A detail request can race the first cold-start TMDB request. Retry once
+  // before treating a valid numeric ID as a missing title.
+  if (!data) {
+    data = await fetchFromTMDB<any>(`/${type}/${id}`, params);
+  }
 
   if (data) {
     return formatTMDBItem(data, type);
