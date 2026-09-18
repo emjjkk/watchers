@@ -37,16 +37,6 @@ async function getRedis(): Promise<any> {
 }
 
 export async function getCached<T>(key: string): Promise<T | null> {
-  const redis = await getRedis();
-  if (redis) {
-    try {
-      const raw = await redis.get(key);
-      if (raw) return JSON.parse(raw) as T;
-    } catch {
-      // Fall through to in-memory
-    }
-  }
-
   const cached = inMemoryCache.get(key);
   if (cached) {
     if (Date.now() < cached.expiry) {
@@ -59,11 +49,35 @@ export async function getCached<T>(key: string): Promise<T | null> {
       inMemoryCache.delete(key);
     }
   }
+
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      const raw = await redis.get(key);
+      if (raw) {
+        const data = JSON.parse(raw) as T;
+        inMemoryCache.set(key, {
+          data: JSON.stringify(data),
+          expiry: Date.now() + 3600 * 1000,
+        });
+        return data;
+      }
+    } catch {
+      // Fall through to a cache miss.
+    }
+  }
+
   return null;
 }
 
 export async function setCached<T>(key: string, data: T, ttlSeconds: number = 3600): Promise<void> {
   const payload = JSON.stringify(data);
+
+  inMemoryCache.set(key, {
+    data: payload,
+    expiry: Date.now() + ttlSeconds * 1000,
+  });
+
   const redis = await getRedis();
   if (redis) {
     try {
@@ -73,12 +87,6 @@ export async function setCached<T>(key: string, data: T, ttlSeconds: number = 36
       // Fall through to in-memory
     }
   }
-
-  // In-memory fallback
-  inMemoryCache.set(key, {
-    data: payload,
-    expiry: Date.now() + ttlSeconds * 1000,
-  });
 
   // Keep memory cache under 500 items
   if (inMemoryCache.size > 500) {

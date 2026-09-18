@@ -44,11 +44,6 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string 
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) return null;
 
-  if (!checkRateLimit()) {
-    console.warn('[TMDB] Rate limit exceeded, serving from fallback');
-    return null;
-  }
-
   const queryParams = new URLSearchParams();
   // Support both v3 api_key query param and v4 Bearer token
   if (apiKey.startsWith('ey') || apiKey.length > 50) {
@@ -66,6 +61,11 @@ async function fetchFromTMDB<T>(endpoint: string, params: Record<string, string 
 
   const cached = await getCached<T>(cacheKey);
   if (cached) return cached;
+
+  if (!checkRateLimit()) {
+    console.warn('[TMDB] Rate limit exceeded, serving from fallback');
+    return null;
+  }
 
   try {
     const headers: Record<string, string> = { 'Accept': 'application/json' };
